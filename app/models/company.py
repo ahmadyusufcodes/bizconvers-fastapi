@@ -50,7 +50,7 @@ class Staff(BaseModel):
     phone: str
     email: str
     branch: ObjectId
-    avarar: str
+    avartar: str
     roles: List[ObjectId]
     user: ObjectId
     password: str

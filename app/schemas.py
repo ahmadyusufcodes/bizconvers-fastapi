@@ -3,7 +3,7 @@ from typing import List, Optional
 
 class UserCredentials(BaseModel):
     username: str
-    password: str
+    password: str 
 
 class Permission(BaseModel):
     name: str
@@ -16,3 +16,7 @@ class Role(BaseModel):
     description: str
     permissions: List[Permission]
 
+class SuperUser(BaseModel):
+    username: str
+    email: str
+    password: str
