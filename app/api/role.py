@@ -7,12 +7,7 @@ from app.models.company import Company
 from app.schema.schemas import role_serial
 
 
-router = APIRouter(
-    prefix="/role",
-    tags=["role"],
-    # dependencies=[Depends(get_token_header)],
-    responses={404: {"description": "Not found"}},
-)
+router = APIRouter()
 
 roles = db["roles"]
 

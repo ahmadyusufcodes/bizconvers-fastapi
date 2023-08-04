@@ -1,15 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional, ForwardRef
 from app.models.role import Role
-from bson import ObjectId
+from bson.objectid import ObjectId
 
 RoleRef = ForwardRef("Role")
+SuperUserRef = ForwardRef("SuperUser")
+BranchRef = ForwardRef("Branch")
 
 class User(BaseModel):
     username: str
     password: str
     roles: List[RoleRef] = []
-    branch: Optional[str] = None
+    branch: Optional[BranchRef] = None
 
 class SuperUser(BaseModel):
     username: str
@@ -18,18 +20,18 @@ class SuperUser(BaseModel):
     roles: List[RoleRef] = []
 
 class Company(BaseModel):
-    name: str
-    address: str
-    phone: str
-    email: str
-    branches: Optional[ObjectId] = None
-    superuser: Optional[ObjectId] = None
-    website: str
-    logo: str
-    gstin: str
-    cin: str
-    pan: str
-    tan: str
+    name: str = ""
+    address: str = ""
+    phone: str = ""
+    email: str = ""
+    branches: List[str] = []
+    superusers: List[str] = []
+    website: str = ""
+    logo: str = ""
+    gstin: str = ""
+    cin: str = ""
+    pan: str = ""
+    tan: str = ""
 
 class Branch(BaseModel):
     name: str
@@ -42,17 +44,16 @@ class Branch(BaseModel):
     cin: str
     pan: str
     tan: str
-    company: ObjectId
+    company: str
 
 class Staff(BaseModel):
     name: str
     address: str
     phone: str
     email: str
-    branch: ObjectId
+    branch: str
     avartar: str
-    roles: List[ObjectId]
-    user: ObjectId
+    roles: List[RoleRef] = []
     password: str
     username: str
     otp: str

@@ -4,28 +4,28 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from app.schema.schemas import staff_serializer, staff_update_serializer
 from app.models.company import Staff, Branch
+from app.utils.jwt_utils import create_jwt_token, verify_jwt_token
+from app.utils.password_utils import verify_password, hash_password
+from pymongo.errors import DuplicateKeyError
 
-router = APIRouter({
-    "prefix": "/staff",
-    "tags": ["Staff"]
-})
 
-staff = db["staff"] # collection
+router = APIRouter()
 
-# POST /staff/: Create a new staff member under a branch.
-# GET /staff/{staff_id}: Get staff member details by ID.
-# PUT /staff/{staff_id}: Update staff member details.
-# DELETE /staff/{staff_id}: Delete a staff member.
+staff = db["staff"]
 
 @router.post("/", response_description="Add new staff", response_model=Staff)
-async def create_staff(staff: Staff = Depends(staff_serializer)):
+def create_staff(staff: Staff):
     try:
-        staff_id = await db["staff"].insert_one(staff.dict())
-        new_staff = await db["staff"].find_one({"_id": staff_id.inserted_id})
-        return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_staff)
+        staff = staff.dict()
+        staff["password"] = hash_password(staff["password"])
+        staff_id = db["staff"].insert_one(staff)
+        new_staff = db["staff"].find_one({"_id": staff_id.inserted_id})
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=staff_serializer(new_staff))
+    except DuplicateKeyError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff with this email already exists")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
 @router.get("/{staff_id}", response_description="Get a single staff", response_model=Staff)
 async def read_staff(staff_id: str):
     try:
@@ -36,12 +36,12 @@ async def read_staff(staff_id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
 @router.put("/{staff_id}", response_description="Update a staff", response_model=Staff)
-async def update_staff(staff_id: str, staff: Staff = Depends(staff_update_serializer)):
+async def update_staff(staff_id: str, staff: Staff):
     try:
-        staff = await db["staff"].find_one({"_id": ObjectId(staff_id)})
-        if staff:
+        find_staff = await db["staff"].find_one({"_id": ObjectId(staff_id)})
+        if find_staff:
             updated_staff = await db["staff"].update_one({"_id": ObjectId(staff_id)}, {"$set": staff.dict()})
             if updated_staff:
                 return await db["staff"].find_one({"_id": ObjectId(staff_id)})
@@ -51,7 +51,7 @@ async def update_staff(staff_id: str, staff: Staff = Depends(staff_update_serial
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
 @router.delete("/{staff_id}", response_description="Delete a staff")
 async def delete_staff(staff_id: str):
     try:
@@ -63,7 +63,7 @@ async def delete_staff(staff_id: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
 @router.get("/branch/{branch_id}", response_description="Get all staff in a branch")
 async def read_staff_by_branch(branch_id: str):
     try:
@@ -88,7 +88,7 @@ async def read_staff_by_branch_and_role(branch_id: str, role_id: str, page: int)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    
+
 @router.get("/role/{role_id}/{page}", response_description="Get all staff with a role")
 async def read_staff_by_role(role_id: str, page: int, request: Request):
     try:

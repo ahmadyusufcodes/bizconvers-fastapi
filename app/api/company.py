@@ -4,29 +4,34 @@ from bson import ObjectId
 from app.db.db import db
 from app.models.role import Role
 from app.models.company import Company
-from app.schema.schemas import company_serial
+from app.schema.schemas import company_serializer
 
-router = APIRouter(
-    prefix="/company",
-    tags=["company"],
-    # dependencies=[Depends(get_token_header)],
-    responses={404: {"description": "Not found"}},
-)
+router = APIRouter()
 
-companies = db["companies"]
+companies = db["company"]
+
+@router.get("/", response_description="Get all companies")
+async def read_companies():
+    try:
+        companies_list = companies.find()
+        companies_list = [company_serializer(company) for company in companies_list]
+        return companies_list
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 @router.post("/")
 async def create_company(company: Company):
     try:
         company_id = companies.insert_one(company.dict()).inserted_id
-        return company_serial(companies.find_one({"_id": company_id}))
+        return company_serializer(companies.find_one({"_id": company_id}))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{company_id}")
 async def get_company(company_id: str):
     try:
-        return company_serial(companies.find_one({"_id": ObjectId(company_id)}))
+        return company_serializer(companies.find_one({"_id": ObjectId(company_id)}))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -34,7 +39,7 @@ async def get_company(company_id: str):
 async def update_company(company_id: str, company: Company):
     try:
         companies.update_one({"_id": ObjectId(company_id)}, {"$set": company.dict()})
-        return company_serial(companies.find_one({"_id": ObjectId(company_id)}))
+        return company_serializer(companies.find_one({"_id": ObjectId(company_id)}))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

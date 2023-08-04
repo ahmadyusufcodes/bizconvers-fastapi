@@ -20,3 +20,12 @@ class SuperUser(BaseModel):
     username: str
     email: str
     password: str
+
+class Staff(BaseModel):
+    name: str
+    email: str
+    phone: str
+    address: str
+    branch: str
+    roles: List[Role]
+    attributes: dict

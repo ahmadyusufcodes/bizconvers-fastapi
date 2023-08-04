@@ -1,88 +1,98 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer
-from datetime import timedelta
-from app.utils.perms_utils import verify_is_admin
-from app.db.db import db
-from app.utils.jwt_utils import create_jwt_token, verify_jwt_token
-from os import environ
-import json
-from app.models.company import Company, Branch, SuperUser, Staff
-from app.schemas import UserCredentials, Role, Permission, SuperUser
-from app.utils.password_utils import hash_password, verify_password
-from app.models.user import User
 from bson import ObjectId
-from app.api.auth import authenticate_user
-from app.schema.schemas import permission_serial, role_serial
-from app.utils.request_utils import success_response, error_response
+from app.db.db import db
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
+from app.schema.schemas import superuser_serializer, staff_serializer, login_serializer
+from app.models.company import SuperUser, Staff
 
-router = APIRouter()
-superuser = db["superuser"]
+# POST /register/superuser: Register a new superuser.
+# POST /register/user: Register a new user (staff member).
+# POST /login: User login and authentication.
+# GET /users/: Get a list of all users.
+# GET /users/{user_id}: Get user details by ID.
+# PUT /users/{user_id}: Update user details.
+# DELETE /users/{user_id}: Delete a user.
 
-SECRET_KEY = environ.get("SECRET_KEY")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+router = APIRouter({
+    "prefix": "/user",
+    "tags": ["User"]
+})
 
-@router.post("/register/superuser")
-async def register_superuser(super_user: SuperUser):
-    # use try catch to check if superuser exists
+superuser = db["superuser"] # collection
+staff = db["staff"] # collection
+
+@router.post("/register/superuser", response_description="Add new superuser", response_model=SuperUser)
+async def create_superuser(superuser: SuperUser = Depends(superuser_serializer)):
     try:
-        hashed_password = hash_password(super_user.password)
-        superuser.insert_one({"username": super_user.username, "email": super_user.email, "password": hashed_password})
-        return success_response({"message": "Superuser created successfully", "username": dict(super_user)})
+        superuser_id = await db["superuser"].insert_one(superuser.dict())
+        new_superuser = await db["superuser"].find_one({"_id": superuser_id.inserted_id})
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_superuser)
     except Exception as e:
-        return error_response(str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
-@router.post("/register/user")
-async def register_user(staff: Staff):
+@router.post("/register/user", response_description="Add new user", response_model=Staff)
+async def create_staff(staff: Staff = Depends(staff_serializer)):
     try:
-        hashed_password = hash_password(staff.password)
-        staff.password = hashed_password
-        superuser.insert_one(staff.dict())
-        return success_response({"message": "Superuser created successfully", "username": dict(staff)})
+        staff_id = await db["staff"].insert_one(staff.dict())
+        new_staff = await db["staff"].find_one({"_id": staff_id.inserted_id})
+        return JSONResponse(status_code=status.HTTP_201_CREATED, content=new_staff)
     except Exception as e:
-        return error_response(str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
-@router.post("/login")
-async def login(userCreds: UserCredentials):
-    user = authenticate_user(userCreds.username, userCreds.password)
-    if user:
-        token_data = {"sub": user["username"], "roles": user["roles"]}
-        access_token_expires = timedelta(minutes=30)
-        access_token = create_jwt_token(token_data, access_token_expires)
-        return {"access_token": access_token, "token_type": "bearer"}
-    else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+@router.post("/login", response_description="Login and authentication", response_model=Staff)
+async def login_staff(staff: Staff = Depends(login_serializer)):
+    try:
+        staff = await db["staff"].find_one({"email": staff.email, "password": staff.password})
+        if staff:
+            return staff
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@router.get("/", response_description="Get all users")
+async def read_users(request: Request):
+    try:
+        total = await db["staff"].count_documents({})
+        staff = await db["staff"].find({}).skip((request.query_params["page"] - 1) * 10).limit(10).to_list(length=100)
+        return {"total": total, "staff": staff, "next": request.query_params["page"] + 1}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
-@router.get("/users")
-# paginated
-async def get_users(request: Request):
-    page = request.args.get("page", 1, type=int)
-    limit = request.args.get("limit", 10, type=int)
+@router.get("/{user_id}", response_description="Get a single user")
+async def read_user(user_id: str):
     try:
-        users = db.users.find().skip((page - 1) * limit).limit(limit)
-        return success_response({"users": [user for user in users], "total": users.count(), "page": page, "limit": limit})
+        user = await db["staff"].find_one({"_id": ObjectId(user_id)})
+        if user:
+            return user
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     except Exception as e:
-        return error_response(str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/users/{user_id}")
-async def get_user(user_id: str):
+@router.put("/{user_id}", response_description="Update a user")
+async def update_user(user_id: str, user: Staff = Depends(staff_serializer)):
     try:
-        user = db.users.find_one({"_id": ObjectId(user_id)})
-        return success_response({"user": user})
+        user = await db["staff"].find_one({"_id": ObjectId(user_id)})
+        if user:
+            updated_user = await db["staff"].update_one({"_id": ObjectId(user_id)}, {"$set": user.dict()})
+            if updated_user:
+                return await db["staff"].find_one({"_id": ObjectId(user_id)})
+            else:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to update user")
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     except Exception as e:
-        return error_response(str(e))
-
-@router.put("/users/{user_id}")
-async def update_user(user_id: str, user: User):
-    try:
-        db.users.update_one({"_id": ObjectId(user_id)}, {"$set": user.dict()})
-        return success_response({"message": "User updated successfully"})
-    except Exception as e:
-        return error_response(str(e))
-
-@router.delete("/users/{user_id}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+@router.delete("/{user_id}", response_description="Delete a user")
 async def delete_user(user_id: str):
     try:
-        db.users.delete_one({"_id": ObjectId(user_id)})
-        return success_response({"message": "User deleted successfully"})
+        user = await db["staff"].find_one({"_id": ObjectId(user_id)})
+        if user:
+            await db["staff"].delete_one({"_id": ObjectId(user_id)})
+            return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content={})
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     except Exception as e:
-        return error_response(str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
