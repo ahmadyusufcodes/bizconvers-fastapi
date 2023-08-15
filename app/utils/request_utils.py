@@ -1,12 +1,4 @@
-def success_response(data, message="Success"):
-    return {
-        "status": "success",
-        "message": message,
-        "data": data
-    }
+from fastapi.responses import JSONResponse
 
-def error_response(message="Error", status_code=400):
-    return {
-        "status": "error",
-        "message": message
-    }, status_code
+def response(status_code, message, data=None):
+    return JSONResponse(status_code=status_code, content={"message": message, "data": data})

@@ -7,11 +7,22 @@ from app.models.company import Staff, Branch
 from app.utils.jwt_utils import create_jwt_token, verify_jwt_token
 from app.utils.password_utils import verify_password, hash_password
 from pymongo.errors import DuplicateKeyError
+from app.utils.request_utils import response
 
 
 router = APIRouter()
 
 staff = db["staff"]
+
+@router.get("/", response_description="Get all staff")
+async def read_staff(page: int, request: Request):
+    try:
+        total = db["staff"].count_documents({})
+        staff = list(db["staff"].find().skip((page - 1) * 10).limit(10))
+        return response(status_code=status.HTTP_200_OK, message="All Staff", data={"total": total, "staff": [staff_serializer(x) for x in staff], "next": page + 1})
+    except Exception as e:
+        return response(status_code=status.HTTP_400_BAD_REQUEST, message="Error Fetching Staff", data=str(e))
+    
 
 @router.post("/", response_description="Add new staff", response_model=Staff)
 def create_staff(staff: Staff):

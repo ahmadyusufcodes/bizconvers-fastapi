@@ -7,12 +7,6 @@ RoleRef = ForwardRef("Role")
 SuperUserRef = ForwardRef("SuperUser")
 BranchRef = ForwardRef("Branch")
 
-class User(BaseModel):
-    username: str
-    password: str
-    roles: List[RoleRef] = []
-    branch: Optional[BranchRef] = None
-
 class SuperUser(BaseModel):
     username: str
     password: str
@@ -28,10 +22,7 @@ class Company(BaseModel):
     superusers: List[str] = []
     website: str = ""
     logo: str = ""
-    gstin: str = ""
-    cin: str = ""
-    pan: str = ""
-    tan: str = ""
+    attributes: dict = {}
 
 class Branch(BaseModel):
     name: str
@@ -40,10 +31,7 @@ class Branch(BaseModel):
     email: str
     website: str
     logo: str
-    gstin: str
-    cin: str
-    pan: str
-    tan: str
+    attributes: dict = {}
     company: str
 
 class Staff(BaseModel):
@@ -51,9 +39,10 @@ class Staff(BaseModel):
     address: str
     phone: str
     email: str
-    branch: str
+    branch: List[str] = []
     avartar: str
     roles: List[RoleRef] = []
     password: str
     username: str
+    company: str
     otp: str

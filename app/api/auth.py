@@ -8,10 +8,10 @@ from os import environ
 import json
 from app.schemas import UserCredentials, Role, Permission
 from app.utils.password_utils import hash_password, verify_password
-from app.models.user import User
+from app.models.company import SuperUser, Staff
 from bson import ObjectId
 from app.schema.schemas import permission_serial, role_serial
-from app.utils.request_utils import success_response, error_response
+from app.utils.request_utils import response
 
 router = APIRouter()
 superuser = db["superuser"]
@@ -73,15 +73,15 @@ async def register(userCreds: UserCredentials):
 async def get_roles():
     try:
         roles = db.roles.find()
-        return  success_response([role_serial(role) for role in roles])
+        return  response(status.HTTP_200_OK, "Roles fetched successfully", [role_serial(role) for role in roles])
     except Exception as e:
-        return error_response(str(e))
+        return response(status.HTTP_500_INTERNAL_SERVER_ERROR, str(e))  
 
 @router.post("/roles")
 def create_role(request: Role):
     try:
         role = db.roles.insert_one(request.dict(by_alias=True))
-        return success_response({"id": str(role.inserted_id)})
+        return response(status.HTTP_201_CREATED, "Role created successfully", role_serial(db.roles.find_one({"_id": role.inserted_id})))
     except Exception as e:
-        return error_response(str(e))
+        return response(status.HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 

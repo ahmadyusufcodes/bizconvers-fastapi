@@ -23,10 +23,11 @@ def staff_serializer(staff):
         "address": staff["address"],
         "phone": staff["phone"],
         "email": staff["email"],
-        "branch": staff["branch"],
         "username": staff["username"],
         "avartar": staff["avartar"],
         "roles": [role_serial(role) for role in staff["roles"]],
+        "branch": [str(branch) for branch in staff["branch"]],
+        "company": staff["company"],
     }
 
 def staff_update_serializer(staff):
@@ -35,7 +36,8 @@ def staff_update_serializer(staff):
         "address": staff["address"],
         "phone": staff["phone"],
         "email": staff["email"],
-        "branch": staff["branch"],
+        "branch": [str(branch) for branch in staff["branch"]],
+        "company": staff["company"],
         "username": staff["username"],
         "avartar": staff["avartar"],
         "roles": [role_serial(role) for role in staff["roles"]],
@@ -50,10 +52,7 @@ def branch_serializer(branch):
         "email": branch["email"],
         "website": branch["website"],
         "logo": branch["logo"],
-        "gstin": branch["gstin"],
-        "cin": branch["cin"],
-        "pan": branch["pan"],
-        "tan": branch["tan"],
+        "attributes": branch["attributes"],
         "company": str(branch["company"]),
     }
 
@@ -68,10 +67,7 @@ def company_serializer(company):
         "superusers": company["superusers"],
         "website": company["website"],
         "logo": company["logo"],
-        "gstin": company["gstin"],
-        "cin": company["cin"],
-        "pan": company["pan"],
-        "tan": company["tan"],
+        "attributes": company["attributes"],
     }
 
 def branch_update_serializer(branch):
@@ -83,9 +79,6 @@ def branch_update_serializer(branch):
         "email": branch["email"],
         "website": branch["website"],
         "logo": branch["logo"],
-        "gstin": branch["gstin"],
-        "cin": branch["cin"],
-        "pan": branch["pan"],
-        "tan": branch["tan"],
+        "attributes": branch["attributes"],
         "company": branch["company"],
     }

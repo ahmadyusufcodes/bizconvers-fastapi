@@ -13,7 +13,7 @@ from app.models.user import User
 from bson import ObjectId
 from app.api.auth import authenticate_user
 from app.schema.schemas import permission_serial, role_serial
-from app.utils.request_utils import success_response, error_response
+from app.utils.request_utils import response
 
 router = APIRouter()
 superuser = db["superuser"]
@@ -27,9 +27,9 @@ async def register_superuser(super_user: SuperUser):
     try:
         hashed_password = hash_password(super_user.password)
         superuser.insert_one({"username": super_user.username, "email": super_user.email, "password": hashed_password})
-        return success_response({"message": "Superuser created successfully", "username": dict(super_user)})
+        return response(status_code=200, message="Superuser created successfully", data=super_user.dict())
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
     
 @router.post("/register/user")
 async def register_user(staff: Staff):
@@ -37,9 +37,9 @@ async def register_user(staff: Staff):
         hashed_password = hash_password(staff.password)
         staff.password = hashed_password
         superuser.insert_one(staff.dict())
-        return success_response({"message": "Superuser created successfully", "username": dict(staff)})
+        return response(status_code=200, message="Staff created successfully", data=staff.dict())
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
     
 @router.post("/login")
 async def login(userCreds: UserCredentials):
@@ -48,9 +48,9 @@ async def login(userCreds: UserCredentials):
         token_data = {"sub": user["username"], "roles": user["roles"]}
         access_token_expires = timedelta(minutes=30)
         access_token = create_jwt_token(token_data, access_token_expires)
-        return {"access_token": access_token, "token_type": "bearer"}
+        return response(status_code=200, message="Login successful", data={"access_token": access_token, "token_type": "bearer"})
     else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        return response(status_code=401, message="Invalid credentials")
     
 @router.get("/users")
 # paginated
@@ -59,30 +59,31 @@ async def get_users(request: Request):
     limit = request.args.get("limit", 10, type=int)
     try:
         users = db.users.find().skip((page - 1) * limit).limit(limit)
-        return success_response({"users": [user for user in users], "total": users.count(), "page": page, "limit": limit})
+        res = {"users": [user for user in users], "total": users.count(), "page": page, "limit": limit}
+        return response(status_code=200, message="Users retrieved successfully", data=res)
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
 
 @router.get("/users/{user_id}")
 async def get_user(user_id: str):
     try:
         user = db.users.find_one({"_id": ObjectId(user_id)})
-        return success_response({"user": user})
+        return response(status_code=200, message="User retrieved successfully", data=user)
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
 
 @router.put("/users/{user_id}")
 async def update_user(user_id: str, user: User):
     try:
         db.users.update_one({"_id": ObjectId(user_id)}, {"$set": user.dict()})
-        return success_response({"message": "User updated successfully"})
+        return response(status_code=200, message="User updated successfully", data=user.dict())
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
 
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: str):
     try:
         db.users.delete_one({"_id": ObjectId(user_id)})
-        return success_response({"message": "User deleted successfully"})
+        return response(status_code=200, message="User deleted successfully")
     except Exception as e:
-        return error_response(str(e))
+        return response(status_code=500, message=str(e))
