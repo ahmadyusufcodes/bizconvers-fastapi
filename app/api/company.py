@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from bson import ObjectId
 from app.db.db import db
 from app.models.role import Role
-from app.models.company import Company
+from app.models.company import Company, Branch, Staff
 from app.schema.schemas import company_serializer, branch_serializer, staff_serializer
 from app.utils.request_utils import response
 
@@ -57,44 +57,5 @@ async def delete_company(company_id: str):
     try:
         companies_col.delete_one({"_id": ObjectId(company_id)})
         return response(status_code=200, message="Company deleted successfully")
-    except Exception as e:
-        return response(status_code=500, message=str(e))
-
-@router.get("/{company_id}/branch")
-async def get_company_branches(company_id: str):
-    try:
-        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
-        if not find_company:
-            return response(status_code=404, message="Company not found")
-        branches = branches_col.find({"company": company_id})
-        branches = [branch_serializer(branch) for branch in branches]
-        return response(status_code=200, message="Branches retrieved successfully", data=branches)
-    except Exception as e:
-        return response(status_code=500, message=str(e))
-    
-
-@router.get("/{company_id}/staff")
-async def get_company_staff(company_id: str, request: Request):
-    branchId = request.query_params.get('branchId')
-    print(branchId, "branchId")
-    print(company_id, "company_id")
-    try:
-        {}
-        if company_id == "*":
-            find_all_staff = staff_col.find()
-            find_all_staff = [staff_serializer(staff) for staff in find_all_staff]
-            return response(status_code=200, message="Staff retrieved successfully", data=find_all_staff)
-        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
-        if not find_company:
-            return response(status_code=404, message="Company not found")
-        if branchId:
-            find_branch = branches_col.find_one({"_id": ObjectId(branchId)})
-            if not find_branch:
-                return response(status_code=404, message="Branch not found")
-            staff = staff_col.find({"company": company_id, "branch": {"$in": [branchId]}})
-        else:
-            staff = staff_col.find({"company": company_id})
-        staff = [staff_serializer(staff) for staff in staff]
-        return response(status_code=200, message="Staff retrieved successfully", data=staff)
     except Exception as e:
         return response(status_code=500, message=str(e))

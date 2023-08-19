@@ -12,100 +12,72 @@ from app.utils.request_utils import response
 
 router = APIRouter()
 
-staff = db["staff"]
+staff_col = db["staff"]
+companies_col = db["company"]
+branches_col = db["branch"]
 
-@router.get("/", response_description="Get all staff")
-async def read_staff(page: int, request: Request):
+@router.get("/{company_id}/staff")
+async def get_company_staff(company_id: str, request: Request):
+    branchId = request.query_params.get('branchId')
+    print(branchId, "branchId")
+    print(company_id, "company_id")
     try:
-        total = db["staff"].count_documents({})
-        staff = list(db["staff"].find().skip((page - 1) * 10).limit(10))
-        return response(status_code=status.HTTP_200_OK, message="All Staff", data={"total": total, "staff": [staff_serializer(x) for x in staff], "next": page + 1})
+        {}
+        if company_id == "*":
+            find_all_staff = staff_col.find()
+            find_all_staff = [staff_serializer(staff) for staff in find_all_staff]
+            return response(status_code=200, message="Staff retrieved successfully", data=find_all_staff)
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        if branchId:
+            find_branch = branches_col.find_one({"_id": ObjectId(branchId)})
+            if not find_branch:
+                return response(status_code=404, message="Branch not found")
+            staff = staff_col.find({"company": company_id, "branch": {"$in": [branchId]}})
+        else:
+            staff = staff_col.find({"company": company_id})
+        staff = [staff_serializer(staff) for staff in staff]
+        return response(status_code=200, message="Staff retrieved successfully", data=staff)
     except Exception as e:
-        return response(status_code=status.HTTP_400_BAD_REQUEST, message="Error Fetching Staff", data=str(e))
+        return response(status_code=500, message=str(e))
     
-
-@router.post("/", response_description="Add new staff", response_model=Staff)
-def create_staff(staff: Staff):
+@router.post("/{company_id}/staff")
+async def create_company_staff(company_id: str, staff: Staff):
     try:
-        staff = staff.dict()
-        staff["password"] = hash_password(staff["password"])
-        staff_id = db["staff"].insert_one(staff)
-        new_staff = db["staff"].find_one({"_id": staff_id.inserted_id})
-        return JSONResponse(status_code=status.HTTP_201_CREATED, content=staff_serializer(new_staff))
-    except DuplicateKeyError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Staff with this email already exists")
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        staff.company = company_id
+        staff_id = staff_col.insert_one(staff.dict()).inserted_id
+        return response(status_code=200, message="Staff created successfully", data=staff_serializer(staff_col.find_one({"_id": ObjectId(staff_id)})))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        return response(status_code=500, message=str(e))
 
-@router.get("/{staff_id}", response_description="Get a single staff", response_model=Staff)
-async def read_staff(staff_id: str):
+@router.put("/{company_id}/staff/{staff_id}")
+async def update_company_staff(company_id: str, staff_id: str, staff: Staff):
     try:
-        staff = await db["staff"].find_one({"_id": ObjectId(staff_id)})
-        if staff:
-            return staff
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        find_staff = staff_col.find_one({"_id": ObjectId(staff_id)})
+        if not find_staff:
+            return response(status_code=404, message="Staff not found")
+        staff_col.update_one({"_id": ObjectId(staff_id)}, {"$set": staff.dict()})
+        return response(status_code=200, message="Staff updated successfully", data=staff_serializer(staff_col.find_one({"_id": ObjectId(staff_id)})))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-@router.put("/{staff_id}", response_description="Update a staff", response_model=Staff)
-async def update_staff(staff_id: str, staff: Staff):
-    try:
-        find_staff = await db["staff"].find_one({"_id": ObjectId(staff_id)})
-        if find_staff:
-            updated_staff = await db["staff"].update_one({"_id": ObjectId(staff_id)}, {"$set": staff.dict()})
-            if updated_staff:
-                return await db["staff"].find_one({"_id": ObjectId(staff_id)})
-            else:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to update staff")
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-@router.delete("/{staff_id}", response_description="Delete a staff")
-async def delete_staff(staff_id: str):
-    try:
-        staff = await db["staff"].find_one({"_id": ObjectId(staff_id)})
-        if staff:
-            await db["staff"].delete_one({"_id": ObjectId(staff_id)})
-            return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content={})
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff not found")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-@router.get("/branch/{branch_id}", response_description="Get all staff in a branch")
-async def read_staff_by_branch(branch_id: str):
-    try:
-        branch = await db["branch"].find_one({"_id": ObjectId(branch_id)})
-        if branch:
-            staff = await db["staff"].find({"branch": branch_id}).to_list(length=100)
-            return staff
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        return response(status_code=500, message=str(e))
     
-@router.get("/branch/{branch_id}/role/{role_id}/{page}", response_description="Get all staff in a branch with a role")
-async def read_staff_by_branch_and_role(branch_id: str, role_id: str, page: int):
+@router.delete("/{company_id}/staff/{staff_id}")
+async def delete_company_staff(company_id: str, staff_id: str):
     try:
-        branch = await db["branch"].find_one({"_id": ObjectId(branch_id)})
-        if branch:
-            total = await db["staff"].count_documents({"branch": branch_id, "roles": {"$elemMatch": {"_id": ObjectId(role_id)}}})
-            staff = await db["staff"].find({"branch": branch_id, "roles": {"$elemMatch": {"_id": ObjectId(role_id)}}}).skip((page - 1) * 10).limit(10).to_list(length=100)
-            return {"total": total, "staff": staff, "next": page + 1}
-        else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        find_staff = staff_col.find_one({"_id": ObjectId(staff_id)})
+        if not find_staff:
+            return response(status_code=404, message="Staff not found")
+        staff_col.delete_one({"_id": ObjectId(staff_id)})
+        return response(status_code=200, message="Staff deleted successfully")
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-@router.get("/role/{role_id}/{page}", response_description="Get all staff with a role")
-async def read_staff_by_role(role_id: str, page: int, request: Request):
-    try:
-        total = await db["staff"].count_documents({"roles": {"$elemMatch": {"_id": ObjectId(role_id)}}})
-        staff = await db["staff"].find({"roles": {"$elemMatch": {"_id": ObjectId(role_id)}}}).skip((page - 1) * 10).limit(10).to_list(length=100)
-        return {"total": total, "staff": staff, "next": page + 1}
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
+        return response(status_code=500, message=str(e))

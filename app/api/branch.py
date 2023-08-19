@@ -6,79 +6,60 @@ from app.schema.schemas import branch_serializer, branch_update_serializer, comp
 from app.models.company import Branch
 from app.utils.request_utils import response
 
-
 router = APIRouter()
 
-company = db["company"]
+branches_col = db["branch"]
+companies_col = db["company"]
 
-@router.get("/", response_description="Get all branches")
-def read_branches():
+@router.get("/{company_id}/branch")
+async def get_company_branches(company_id: str):
     try:
-        branches = db["branch"].find()
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        branches = branches_col.find({"company": company_id})
         branches = [branch_serializer(branch) for branch in branches]
         return response(status_code=200, message="Branches retrieved successfully", data=branches)
     except Exception as e:
         return response(status_code=500, message=str(e))
- 
-@router.post("/", response_description="Add new branch")
-async def create_branch(branch: Branch):
-    branch = branch.dict()
-    companyId = branch["company"]
-    if not companyId:
-        return response(status_code=400, message="Company is required")
-    find_company = db["company"].find_one({"_id": ObjectId(companyId)})
-    if find_company:
-        try:
-            branch_id = db["branch"].insert_one(branch).inserted_id
-            new_branch = db["branch"].find_one({"_id": ObjectId(branch_id)})
-            db["company"].update_one({"_id": ObjectId(companyId)}, {"$push": {"branches": str(branch_id)}})
-            return response(status_code=200, message="Branch created successfully", data=branch_serializer(new_branch))
-        except Exception as e:
-            return response(status_code=500, message=str(e))
-    else:
-        return response(status_code=404, message="Company not found")
-    
-@router.get("/{branch_id}", response_description="Get a single branch", response_model=Branch)
-async def read_branch(branch_id: str):
+
+@router.post("/{company_id}/branch")
+async def create_company_branch(company_id: str, branch: Branch):
     try:
-        branch = await db["branch"].find_one({"_id": ObjectId(branch_id)})
-        if branch:
-            return response(status_code=200, message="Branch retrieved successfully", data=branch_serializer(branch))
-        else:
-            return response(status_code=404, message="Branch not found")
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        branch.company = company_id
+        branch_id = branches_col.insert_one(branch.dict()).inserted_id
+        return response(status_code=200, message="Branch created successfully", data=branch_serializer(branches_col.find_one({"_id": ObjectId(branch_id)})))
     except Exception as e:
         return response(status_code=500, message=str(e))
     
-@router.put("/{branch_id}", response_description="Update a branch", response_model=Branch)
-async def update_branch(branch_id: str, branch: Branch = Depends(branch_update_serializer)):
-    if not branch.company:
-        return response(status_code=400, message="Company is required")
-    find_company = await db["company"].find_one({"_id": ObjectId(branch.company)})
-    if not find_company:
-        return response(status_code=404, message="Company not found")
+@router.put("/{company_id}/branch/{branch_id}")
+async def update_company_branch(company_id: str, branch_id: str, branch: Branch):
     try:
-        branch = await db["branch"].find_one({"_id": ObjectId(branch_id)})
-        if branch:
-            updated_branch = await db["branch"].update_one({"_id": ObjectId(branch_id)}, {"$set": branch.dict()})
-            if updated_branch:
-                return await db["branch"].find_one({"_id": ObjectId(branch_id)})
-            else:
-                return response(status_code=400, message="Failed to update branch")
-        else:
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        find_branch = branches_col.find_one({"_id": ObjectId(branch_id)})
+        if not find_branch:
             return response(status_code=404, message="Branch not found")
+        branches_col.update_one({"_id": ObjectId(branch_id)}, {"$set": branch.dict()})
+        return response(status_code=200, message="Branch updated successfully", data=branch_serializer(branches_col.find_one({"_id": ObjectId(branch_id)})))
     except Exception as e:
         return response(status_code=500, message=str(e))
     
-@router.delete("/{branch_id}", response_description="Delete a branch")
-async def delete_branch(branch_id: str):
+@router.delete("/{company_id}/branch/{branch_id}")
+async def delete_company_branch(company_id: str, branch_id: str):
     try:
-        branch = db["branch"].find_one({"_id": ObjectId(branch_id)})
-        if branch:
-            deleted_branch = db["branch"].delete_one({"_id": ObjectId(branch_id)})
-            if deleted_branch:
-                return response(status_code=200, message="Branch deleted successfully")
-            return response(status_code=400, message="Failed to delete branch")
-        else:
+        find_company = companies_col.find_one({"_id": ObjectId(company_id)})
+        if not find_company:
+            return response(status_code=404, message="Company not found")
+        find_branch = branches_col.find_one({"_id": ObjectId(branch_id)})
+        if not find_branch:
             return response(status_code=404, message="Branch not found")
+        branches_col.delete_one({"_id": ObjectId(branch_id)})
+        return response(status_code=200, message="Branch deleted successfully")
     except Exception as e:
         return response(status_code=500, message=str(e))
+    
