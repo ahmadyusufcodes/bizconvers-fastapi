@@ -21,18 +21,13 @@ SECRET_KEY = environ.get("SECRET_KEY")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 def authenticate_user(username: str, password: str):
-    check_super_user = superuser.find_one({"username": username})
-    check_staff = staff.find_one({"username": username})
-    if check_super_user:
-        if  (password, check_super_user["password"]):
-            return check_super_user
-        else:
-            return "Invalid credentials"
-    elif check_staff:
-        if verify_password(password, check_staff["password"]):
-            return check_staff
-        else:
-            return "Invalid credentials"
+    super_user = superuser.find_one({"username": username})
+    staff_user = staff.find_one({"username": username})
+    
+    if super_user and password == super_user["password"]:
+        return super_user
+    elif staff_user and verify_password(password, staff_user["password"]):
+        return staff_user
     else:
         return "Invalid credentials"
 

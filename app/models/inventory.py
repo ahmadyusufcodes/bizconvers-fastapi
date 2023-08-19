@@ -6,7 +6,7 @@ from enum import Enum
 class Product(BaseModel):
     name: str
     description: str
-    image: str
+    images: List[str]
     unit: str
     category_id: ObjectId
     attributes: dict
@@ -15,7 +15,7 @@ class ProductVariant(BaseModel):
     product_id: ObjectId
     name: str
     description: str
-    image: List[str]
+    images: List[str]
     unit: str
     attributes: dict
 
