@@ -5,6 +5,7 @@ class Permission(BaseModel):
     name: str
     read: bool
     write: bool
+    delete: bool
     description: str
 
 class Role(BaseModel):
@@ -12,3 +13,11 @@ class Role(BaseModel):
     description: str
     permissions: List[Permission]
 
+class RoleOut(BaseModel):
+    name: str
+    description: str
+
+class RoleRef(BaseModel):
+    id: str
+    name: str
+    description: str

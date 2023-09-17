@@ -1,50 +1,10 @@
 from pydantic import BaseModel
-from bson import ObjectId
-from typing import List, Optional
+from typing import ForwardRef, List, Optional
 from enum import Enum
 
-class Product(BaseModel):
-    name: str
-    description: str
-    images: List[str]
-    unit: str
-    category_id: ObjectId
-    attributes: dict
-
-class ProductVariant(BaseModel):
-    product_id: ObjectId
-    name: str
-    description: str
-    images: List[str]
-    unit: str
-    attributes: dict
-
-class ProductInBranch(BaseModel):
-    product_id: ObjectId
-    branch_id: ObjectId
-    price: float
-    quantity: int
-    attributes: dict
-    in_stock: bool
-
-class ProductVariantInBranch(BaseModel):
-    product_id: ObjectId
-    variant_id: ObjectId
-    branch_id: ObjectId
-    price: float
-    quantity: int
-    attributes: dict
-    in_stock: bool
-
-class Category(BaseModel):
-    name: str
-    description: str
-    company_id: ObjectId
-    attributes: dict
-
 class OrderItem(BaseModel):
-    product_id: ObjectId
-    variant_id: ObjectId
+    product_id: str
+    variant_id: str
     quantity: int
     attributes: dict
 
@@ -67,7 +27,7 @@ class DeliveryStatus(str, Enum):
 
 class Order(BaseModel):
     customer: str
-    branch_id: ObjectId
+    branch_id: str
     items: List[OrderItem]
     total: float
     payment_method: PaymentMethod
@@ -77,14 +37,14 @@ class Order(BaseModel):
     attributes: dict
 
 class OrderPayment(BaseModel):
-    order_id: ObjectId
+    order_id: str
     amount: float
     payment_method: PaymentMethod
     payment_status: PaymentStatus
     attributes: dict
 
 class OrderDelivery(BaseModel):
-    order_id: ObjectId
+    order_id: str
     amount: float
     delivery_method: DeliveryMethod
     delivery_status: DeliveryStatus
@@ -97,19 +57,19 @@ class OrderStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 class OrderStatusUpdate(BaseModel):
-    order_id: ObjectId
+    order_id: str
     status: OrderStatus
     attributes: dict
 
 class CartItem(BaseModel):
-    product_id: ObjectId
-    variant_id: ObjectId
+    product_id: str
+    variant_id: str
     quantity: int
     attributes: dict
 
 class Cart(BaseModel):
     customer: str
     tag_color: str = "#fff"
-    branch_id: ObjectId
+    branch_id: str
     items: List[CartItem]
     attributes: dict

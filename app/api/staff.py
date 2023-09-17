@@ -3,7 +3,8 @@ from app.db.db import db
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from app.schema.schemas import staff_serializer, staff_update_serializer
-from app.models.company import Staff, Branch
+from app.company.models import Branch
+from app.staff.models import Staff
 from app.utils.jwt_utils import create_jwt_token, verify_jwt_token
 from app.utils.password_utils import verify_password, hash_password
 from pymongo.errors import DuplicateKeyError

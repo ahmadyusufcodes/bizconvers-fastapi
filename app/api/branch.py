@@ -3,7 +3,7 @@ from app.db.db import db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from app.schema.schemas import branch_serializer, branch_update_serializer, company_serializer
-from app.models.company import Branch
+from app.company.models import Branch
 from app.utils.request_utils import response
 
 router = APIRouter()

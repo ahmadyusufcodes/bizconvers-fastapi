@@ -25,3 +25,33 @@ def check_permission(request: Request, action: str):
             return True
         else:
             return False
+
+def verify_super_admin(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        token = auth_header.split(" ")[1]
+        payload = verify_jwt_token(token)
+        if payload:
+            if "superuser" in payload["roles"]:
+                # request["user"] = payload["sub"]
+                return True
+            else:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not a superuser")
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+
+def get_current_user(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        token = auth_header.split(" ")[1]
+        payload = verify_jwt_token(token)
+        if payload:
+            request["user"] = payload["sub"]
+            return payload["sub"]
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

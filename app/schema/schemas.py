@@ -1,6 +1,5 @@
 def permission_serial(permission):
     return {
-        "id": permission["_id"],
         "name": permission["name"],
         "read": permission["read"],
         "write": permission["write"],
@@ -64,6 +63,7 @@ def company_serializer(company):
         "phone": company["phone"],
         "email": company["email"],
         "branches": company["branches"],
+        "description": company["description"],
         "superusers": company["superusers"],
         "website": company["website"],
         "logo": company["logo"],
@@ -174,6 +174,7 @@ def product_variant_in_branch_update_serializer(product_variant_in_branch):
     }
 
 def category_serializer(category):
+    print(category)
     return {
         "id": str(category["_id"]),
         "name": category["name"],
@@ -295,3 +296,29 @@ def order_status_update_update_serializer(order_status_update):
         "attributes": order_status_update["attributes"],
     }
 
+
+def super_user_insert_serializer(super_user):
+    return {
+        "firstname": super_user["firstname"],
+        "lastname": super_user["lastname"],
+        "email": super_user["email"],
+        "mobile": super_user["mobile"],
+        "password": super_user["password"],
+        "dob": super_user["dob"],
+        "otp": {
+            "otp": "",
+            "expires": ""
+        },
+        "verified": False
+    }
+
+def super_user_serializer(super_user):
+    return {
+        "id": str(super_user["_id"]),
+        "firstname": super_user["firstname"],
+        "lastname": super_user["lastname"],
+        "email": super_user["email"],
+        "mobile": super_user["mobile"],
+        "dob": super_user["dob"],
+        "verified": super_user["verified"],
+    }

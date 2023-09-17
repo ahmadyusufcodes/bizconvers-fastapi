@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class UserCredentials(BaseModel):
-    username: str
+    email: str
     password: str 
 
 class Permission(BaseModel):
